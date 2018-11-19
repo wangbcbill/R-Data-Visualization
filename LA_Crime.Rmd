@@ -1,0 +1,66 @@
+---
+title: "West LA Crime"
+author: "Biancheng Wang"
+date: "November 17, 2018"
+output: pdf_document
+---
+
+# 1. Crime frequency by Reporting District
+```{r,message=FALSE}
+library(rgdal)
+library(classInt)
+library(RColorBrewer)
+library(maptools)
+library(tidyverse)
+# Import Data
+crime=read.csv("C:/Users/wangb/Downloads/Crime_Data_from_2010_to_Present.csv")
+districts=readOGR(dsn="C:/Users/wangb/Downloads/LAPD_Reporting_Districts.shp")
+freq=as.data.frame(table(crime$Reporting.District))
+#crime frequency in different reporting districts in west LA
+freq %>%
+  arrange(desc(Freq)) %>%
+  head(10)
+# number of reporting districts in west LA
+length(freq$Var1)
+districts@data=merge(districts@data,freq,by.x="REPDIST",by.y="Var1",all.x=TRUE)
+# plot spatial distribution of crime in west LA
+districts$Freq[is.na(districts$Freq)]=0
+var=districts@data[,"Freq"]
+breaks=classIntervals(var, n = 9, style = "fisher")
+color=rev(brewer.pal(9, "RdBu"))
+plot(districts, col = color[findInterval(var, breaks$brks, all.inside = TRUE)], 
+     axes = FALSE, border = NA)
+legend(x = -118.6, y = 34.07, legend = leglabs(breaks$brks), fill = color, bty = "n", cex = 0.6)
+```
+From the plot above, we can find the area with the largest number of crime incidents among 70 reporting districts in West LA.
+
+# 2. Crime Types
+```{r}
+crime %>%
+  group_by(Crime.Code.Description) %>%
+  tally() %>%
+  ungroup() %>%
+  arrange(desc(n)) %>%
+  head(5) %>%
+
+  ggplot(aes(x='', y= n,fill = Crime.Code.Description)) +
+  geom_bar(stat='identity') +
+  labs(x = '', y = '', 
+       title = 'Count of Incidents and Crime Description') +
+  coord_polar(theta = "y") + 
+  theme_bw() + theme(legend.position="top")
+```
+Here, we list Top 5 crime types happened in West LA.
+
+# 3. Crime and Age
+```{r,message=FALSE}
+breaks = seq(0,100,5)
+crime %>%
+  ggplot(aes(Victim.Age)) +
+  geom_histogram(binwidth = 5,fill = c("blue")) +
+  scale_x_continuous(limits = c(0, 100),breaks=breaks ) +
+  labs(x = 'Victim Age', y = 'Count of Crimes', 
+       title = 'Age and Crimes') +
+  theme_bw()
+```
+It seems that 20-30 age groups are most affected.
